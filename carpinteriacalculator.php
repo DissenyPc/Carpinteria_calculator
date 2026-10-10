@@ -10,7 +10,7 @@ class CarpinteriaCalculator extends Module
     public function __construct()
     {
         $this->name = 'carpinteriacalculator';
-        $this->tab = 'front_office_features';$this->version = '1.2.0';
+        $this->tab = 'front_office_features';$this->version = '1.3.0';
         $this->author = 'Jaime Sánchez Chirivella (DissenyPc)';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -158,6 +158,37 @@ class CarpinteriaCalculator extends Module
             KEY `id_bar` (`id_bar`)
         ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
+        $sqls[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'carpinteria_quote` (
+            `id_quote` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+            `id_employee` INT(11) UNSIGNED NOT NULL,
+            `date_add` DATETIME NOT NULL,
+            `date_upd` DATETIME NOT NULL,
+            PRIMARY KEY (`id_quote`),
+            KEY `id_employee` (`id_employee`)
+        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
+        $sqls[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'carpinteria_quote_line` (
+            `id_quote_line` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+            `id_quote` INT(11) UNSIGNED NOT NULL,
+            `id_product` INT(11) UNSIGNED NOT NULL,
+            `width` DECIMAL(10,2) NOT NULL,
+            `height` DECIMAL(10,2) NOT NULL,
+            `color_field_key` VARCHAR(32) NOT NULL,
+            `add_overlap` TINYINT(1) NOT NULL DEFAULT 0,
+            `overlap_id_bar` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+            `id_hueco` INT(11) UNSIGNED NOT NULL DEFAULT 0,
+            `holes` TEXT NOT NULL,
+            `add_blind` TINYINT(1) NOT NULL DEFAULT 0,
+            `materials_cost` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            `labor_cost` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            `final_price` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            `date_add` DATETIME NOT NULL,
+            `date_upd` DATETIME NOT NULL,
+            PRIMARY KEY (`id_quote_line`),
+            KEY `id_quote` (`id_quote`),
+            KEY `id_product` (`id_product`)
+        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
         foreach ($sqls as$sql) {
             if (!Db::getInstance()->execute($sql)) {
                 return false;
@@ -170,6 +201,8 @@ class CarpinteriaCalculator extends Module
     private function deleteTables()
     {
         $sqls = array(
+            'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'carpinteria_quote_line`',
+            'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'carpinteria_quote`',
             'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'carpinteria_bar`',
             'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'carpinteria_hueco`',
             'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'carpinteria_product_colors`',
@@ -232,6 +265,29 @@ class CarpinteriaCalculator extends Module
                 || $backOfficeCookie->remote_addr == ip2long(Tools::getRemoteAddr())
                 || !Configuration::get('PS_COOKIE_CHECKIP')
             );
+    }
+
+    public function getLoggedBackOfficeEmployeeId()
+    {
+        if (!$this->isBackOfficeEmployeeLogged()) {
+            return 0;
+        }
+
+        $backOfficeCookie = new Cookie('psAdmin');
+
+        return (int) $backOfficeCookie->id_employee;
+    }
+
+    public function getBackOfficeToken()
+    {
+        $id_employee = $this->getLoggedBackOfficeEmployeeId();
+        if (!$id_employee) {
+            return '';
+        }
+
+        return Tools::getAdminToken(
+            'AdminCarpinteriaCalculator' . (int) Tab::getIdFromClassName('AdminCarpinteriaCalculator') . $id_employee
+        );
     }
 
     public function hookDisplayAdminProductsExtra($params)

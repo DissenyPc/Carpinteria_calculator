@@ -18,6 +18,51 @@ class CarpinteriaCalculatorCalculateModuleFrontController extends ModuleFrontCon
             ]));
         }
 
+        $quoteAction = Tools::getValue('quote_action');
+        if ($quoteAction !== false && $quoteAction !== '') {
+            if (Tools::getValue('quote_token') !== $this->module->getBackOfficeToken()) {
+                $this->respondJson(['success' => false, 'message' => 'La sesión de seguridad ha caducado. Recarga la página e inténtalo de nuevo.']);
+            }
+
+            $db = Db::getInstance();
+            $now = date('Y-m-d H:i:s');
+
+            if ($quoteAction === 'create_quote') {
+                $employeeId = $this->module->getLoggedBackOfficeEmployeeId();
+                if (!$db->insert('carpinteria_quote', [
+                    'id_employee' => $employeeId,
+                    'date_add' => $now,
+                    'date_upd' => $now,
+                ])) {
+                    $this->respondJson(['success' => false, 'message' => 'No se pudo crear el presupuesto: ' . $db->getMsgError()]);
+                }
+
+                $quoteId = (int) $db->Insert_ID();
+                $this->respondJson([
+                    'success' => true,
+                    'id_quote' => $quoteId,
+                    'quote_number' => 'PRES-' . str_pad((string) $quoteId, 6, '0', STR_PAD_LEFT),
+                ]);
+            }
+
+            if ($quoteAction === 'delete_line') {
+                $quoteId = (int) Tools::getValue('id_quote');
+                $lineId = (int) Tools::getValue('id_quote_line');
+                if (!$quoteId || !$lineId || !$db->getValue(
+                    'SELECT `id_quote_line` FROM `' . _DB_PREFIX_ . 'carpinteria_quote_line`
+                    WHERE `id_quote_line` = ' . $lineId . ' AND `id_quote` = ' . $quoteId
+                )) {
+                    $this->respondJson(['success' => false, 'message' => 'No se encontró el producto del presupuesto.']);
+                }
+
+                if (!$db->delete('carpinteria_quote_line', '`id_quote_line` = ' . $lineId . ' AND `id_quote` = ' . $quoteId)) {
+                    $this->respondJson(['success' => false, 'message' => 'No se pudo eliminar el producto: ' . $db->getMsgError()]);
+                }
+                $db->update('carpinteria_quote', ['date_upd' => $now], '`id_quote` = ' . $quoteId);
+                $this->respondJson(['success' => true]);
+            }
+        }
+
         // 2. Obtener parámetros enviados por AJAX
         $id_product = (int) Tools::getValue('id_product');
         $width = (float) Tools::getValue('width');
@@ -229,18 +274,78 @@ class CarpinteriaCalculatorCalculateModuleFrontController extends ModuleFrontCon
         $labor_cost = isset($config['assembly_labor_cost']) ? (float) $config['assembly_labor_cost'] : 0.00;
         $final_price = $total_materials_cost + $labor_cost;
 
-        header('Content-Type: application/json');
-        die(json_encode([
+        $result = [
             'success' => true,
             'final_price' => round($final_price, 2),
             'materials_cost' => round($total_materials_cost, 2),
             'labor_cost' => round($labor_cost, 2),
             'breakdown' => $breakdown,
-        ]));
+        ];
+
+        if ($quoteAction === 'add_line' || $quoteAction === 'update_line') {
+            $quoteId = (int) Tools::getValue('id_quote');
+            if (!$quoteId || !Db::getInstance()->getValue(
+                'SELECT `id_quote` FROM `' . _DB_PREFIX_ . 'carpinteria_quote` WHERE `id_quote` = ' . $quoteId
+            )) {
+                $this->respondJson(['success' => false, 'message' => 'Selecciona un presupuesto válido.']);
+            }
+
+            $lineId = (int) Tools::getValue('id_quote_line');
+            $now = date('Y-m-d H:i:s');
+            $lineData = [
+                'id_quote' => $quoteId,
+                'id_product' => $id_product,
+                'width' => $width,
+                'height' => $height,
+                'color_field_key' => $color_field_key,
+                'add_overlap' => $addOverlap ? 1 : 0,
+                'overlap_id_bar' => $addOverlap ? $overlapId : 0,
+                'id_hueco' => $normalizedHoles ? $id_hueco : 0,
+                'holes' => json_encode($normalizedHoles),
+                'add_blind' => $addBlind ? 1 : 0,
+                'materials_cost' => round($total_materials_cost, 2),
+                'labor_cost' => round($labor_cost, 2),
+                'final_price' => round($final_price, 2),
+                'date_upd' => $now,
+            ];
+
+            if ($quoteAction === 'update_line') {
+                if (!$lineId || !Db::getInstance()->getValue(
+                    'SELECT `id_quote_line` FROM `' . _DB_PREFIX_ . 'carpinteria_quote_line`
+                    WHERE `id_quote_line` = ' . $lineId . ' AND `id_quote` = ' . $quoteId
+                )) {
+                    $this->respondJson(['success' => false, 'message' => 'No se encontró el producto que quieres actualizar.']);
+                }
+                $saved = Db::getInstance()->update(
+                    'carpinteria_quote_line',
+                    $lineData,
+                    '`id_quote_line` = ' . $lineId . ' AND `id_quote` = ' . $quoteId
+                );
+            } else {
+                $lineData['date_add'] = $now;
+                $saved = Db::getInstance()->insert('carpinteria_quote_line', $lineData);
+                $lineId = (int) Db::getInstance()->Insert_ID();
+            }
+
+            if (!$saved) {
+                $this->respondJson(['success' => false, 'message' => 'No se pudo guardar el producto: ' . Db::getInstance()->getMsgError()]);
+            }
+            Db::getInstance()->update('carpinteria_quote', ['date_upd' => $now], '`id_quote` = ' . $quoteId);
+            $result['saved'] = true;
+            $result['id_quote_line'] = $lineId;
+        }
+
+        $this->respondJson($result);
     }
 
     private function isLoggedEmployee()
     {
         return $this->module->isBackOfficeEmployeeLogged();
+    }
+
+    private function respondJson(array $data)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        die(json_encode($data));
     }
 }

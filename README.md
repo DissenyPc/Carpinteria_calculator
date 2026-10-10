@@ -12,6 +12,7 @@ Módulo de PrestaShop para configurar productos de carpintería metálica, mante
 - Cálculo opcional de persiana a **50 €/m²**.
 - Calculadora interna accesible desde el Back Office.
 - Calculadora en la ficha de producto del Front Office para empleados con sesión válida en el Back Office.
+- Presupuestos compartidos entre empleados, con número automático y productos recalculables.
 
 ## Requisitos
 
@@ -29,7 +30,7 @@ Módulo de PrestaShop para configurar productos de carpintería metálica, mante
 
 ## Actualización
 
-Al actualizar una instalación existente, utiliza **Actualizar** en el Gestor de módulos y conserva la instalación. La migración `upgrade/upgrade-1.2.0.php` crea la tabla de materiales de hueco.
+Al actualizar una instalación existente, utiliza **Actualizar** en el Gestor de módulos y conserva la instalación. Las migraciones `upgrade/upgrade-1.2.0.php` y `upgrade/upgrade-1.3.0.php` crean las tablas de materiales de hueco y de presupuestos, respectivamente.
 
 No desinstales el módulo para actualizarlo: el proceso de desinstalación elimina las tablas y los datos guardados.
 
@@ -77,15 +78,18 @@ Las importaciones insertan referencias nuevas y actualizan las existentes. Los C
 
 En **Calculadora de Presupuestos**:
 
-1. Selecciona un producto configurado.
-2. Introduce el ancho y el alto en milímetros.
-3. Selecciona el acabado.
-4. Si corresponde, marca **Añadir solape al perímetro** y selecciona un perfil con “solape”.
-5. Selecciona un material para los huecos y añade uno o más pares de medidas de ancho y alto.
-6. Marca **Añadir persiana** si debe incluirse.
-7. Pulsa **Calcular Presupuesto y Despiece**.
+1. Crea un presupuesto o selecciona uno existente. Los presupuestos son compartidos entre empleados y se identifican con un número automático `PRES-000001`.
+2. Selecciona un producto configurado.
+3. Introduce el ancho y el alto en milímetros.
+4. Selecciona el acabado.
+5. Si corresponde, marca **Añadir solape al perímetro** y selecciona un perfil con “solape”.
+6. Selecciona un material para los huecos y añade uno o más pares de medidas de ancho y alto.
+7. Marca **Añadir persiana** si debe incluirse.
+8. Pulsa **Calcular Presupuesto y Despiece** y luego **Añadir producto al presupuesto**.
 
 El calculador valida las medidas contra los límites configurados en el producto. Cada hueco debe tener medidas positivas y no superar las medidas del producto.
+
+Los productos añadidos aparecen en el detalle del presupuesto. Se pueden editar —cargando de nuevo sus medidas y opciones y recalculando— o eliminar. Al recalcular un producto se usan la receta y los precios actuales del catálogo; los valores calculados se guardan en cada línea para mostrar el presupuesto actual.
 
 ### Cálculos adicionales
 
