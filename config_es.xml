@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>carpinteriacalculator</name>
+    <displayName><![CDATA[Calculadora de Carpinter&iacute;a Met&aacute;lica]]></displayName>
+    <version><![CDATA[1.2.0]]></version>
+    <description><![CDATA[C&aacute;lculo din&aacute;mico de despiece de barras, importaci&oacute;n Excel y precios por acabados W x H.]]></description>
+    <author><![CDATA[Jaime S&aacute;nchez Chirivella (DissenyPc)]]></author>
+    <tab><![CDATA[front_office_features]]></tab>
+    <is_configurable>0</is_configurable>
+    <need_instance>0</need_instance>
+</module>
